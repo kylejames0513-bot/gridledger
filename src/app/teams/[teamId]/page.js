@@ -58,7 +58,7 @@ export default function TeamPage() {
 
   const allRosters = useMemo(() => rostersLoaded ? allBaseRosters : {}, [allBaseRosters, rostersLoaded]);
   const capUsed = roster.reduce((s, p) => s + (p.contract?.cap_hit || 0), 0);
-  const capSpace = SALARY_CAP_2026 - capUsed;
+  const capSpace = teamData?.cap_space != null ? teamData.cap_space : (SALARY_CAP_2026 - capUsed);
   const teamGM = gmMoves.filter(m => m.teamId === teamId);
 
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(''), 2500); }
@@ -208,7 +208,7 @@ export default function TeamPage() {
 
         {activeTab === 'roster' && <RosterTable roster={roster} onAction={handleAction} showActions={true} />}
         {activeTab === 'fa' && <FreeAgentMarket freeAgents={freeAgents} capSpace={capSpace} onSign={handleSignFA} />}
-        {activeTab === 'trade' && <TradeSimulator teamId={teamId} roster={roster} allRosters={allRosters} onExecuteTrade={handleTrade} />}
+        {activeTab === 'trade' && <TradeSimulator teamId={teamId} roster={roster} allRosters={allRosters} onExecuteTrade={handleTrade} teamData={teamData} />}
         {activeTab === 'picks' && <DraftPicks picks={draftPicks} />}
         {activeTab === 'tx' && <TransactionList transactions={(transactions?.length ? transactions : globalTx) || []} />}
         {activeTab === 'gm' && <GMLog moves={teamGM} onUndo={handleUndo} onReset={handleReset} />}
