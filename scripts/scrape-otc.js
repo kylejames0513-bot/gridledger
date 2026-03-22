@@ -547,10 +547,13 @@ async function syncTeam(team, data, contracts) {
 
   // ─── Update team record ───
   var sum = data.summary;
-  var adjustedCap = toM(sum.totalCap);
   var space = toM(sum.capSpace);
   var activeCapM = data.active.reduce(function(s, p) { return s + toM(p.capHit); }, 0);
   var deadCapM = data.dead.reduce(function(s, p) { return s + toM(p.capHit); }, 0);
+  var capUsedM = Math.round((activeCapM + deadCapM) * 100) / 100;
+
+  // Adjusted cap = spending + space (this includes rollover, just like OTC shows)
+  var adjustedCap = Math.round((capUsedM + space) * 100) / 100;
 
   await fetch(SUPA_URL + '/rest/v1/teams?id=eq.' + team.id, {
     method: 'PATCH',
@@ -562,7 +565,7 @@ async function syncTeam(team, data, contracts) {
     },
     body: JSON.stringify({
       cap_total: adjustedCap > 200 ? adjustedCap : CAP_2026,
-      cap_used: Math.round((activeCapM + deadCapM) * 100) / 100,
+      cap_used: capUsedM,
       cap_space: space,
       dead_money: Math.round(deadCapM * 100) / 100,
     }),
