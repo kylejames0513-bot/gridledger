@@ -9,8 +9,9 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <head>
-        <link rel="icon" href="/favicon.ico" />
-        <meta name="theme-color" content="#f0f1f3" />
+        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="/icon.svg" />
+        <meta name="theme-color" content="#1a1d24" />
       </head>
       <body>{children}</body>
     </html>

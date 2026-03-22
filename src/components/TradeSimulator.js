@@ -6,24 +6,42 @@ import { NFL_TEAMS, posColor, formatMoney, getTeamById, SALARY_CAP_2026 } from '
 const POS_TIER = { QB: 10, EDGE: 8.5, CB: 8, WR: 7.5, OT: 7.5, LT: 7.5, RT: 7, IDL: 7, DT: 6.5, DE: 7, S: 6.5, FS: 6.5, SS: 6.5, LB: 6, ILB: 6, OLB: 6.5, TE: 6, RB: 5, OG: 5.5, LG: 5.5, RG: 5.5, C: 5.5, G: 5.5, T: 7, FB: 3, K: 3.5, P: 3, LS: 2 };
 const PICK_VALUES = { 1: 28, 2: 16, 3: 10, 4: 6, 5: 3.5, 6: 2, 7: 1 };
 
+// Top-of-market APY by position (2026 estimates, $M) — players near these are elite
+const POS_MARKET_TOP = { QB: 55, EDGE: 30, CB: 22, WR: 30, OT: 25, LT: 25, RT: 23, IDL: 25, DT: 22, DE: 26, S: 17, FS: 17, SS: 16, LB: 18, ILB: 18, OLB: 20, TE: 17, RB: 14, OG: 17, LG: 17, RG: 17, C: 17, G: 17, T: 24, FB: 4, K: 6, P: 4, LS: 1.5 };
+
 function playerTradeValue(p) {
   const c = p.contract || {};
   const posTier = POS_TIER[p.position] || 4;
   const capHit = c.cap_hit || 0;
   const age = p.age || 27;
-  // Base value from position importance
-  let val = posTier * 3;
-  // Cap hit adds value (expensive = better player usually)
-  val += Math.min(capHit * 1.2, 30);
-  // Age curve: peaks at 26, drops fast after 30
-  if (age <= 25) val += (25 - age) * 0.8;
-  else if (age <= 28) val += (28 - age) * 0.3;
-  else val -= (age - 28) * 1.5;
-  // QB premium
-  if (p.position === 'QB' && capHit > 20) val += 15;
-  // Guaranteed money remaining adds trade difficulty
-  val += Math.min((c.guaranteed || 0) * 0.3, 8);
-  return Math.max(1, Math.round(val * 10) / 10);
+  const marketTop = POS_MARKET_TOP[p.position] || 10;
+
+  // How this player's cap hit ranks at their position (0–1 scale, 1 = top of market)
+  const capRank = Math.min(capHit / marketTop, 1.5);
+
+  // Cap hit is the #1 signal — higher paid = more important to team
+  let val = capRank * 30;  // 0–45 range based on how top-of-market their deal is
+
+  // Position tier multiplier (QBs and pass rushers worth more)
+  val *= (posTier / 7);  // normalize around 1.0
+
+  // Age curve: prime years (24-28) peak, sharp dropoff after 30
+  if (age <= 23) val *= 0.85;       // Young and cheap — potential but unproven
+  else if (age <= 26) val *= 1.1;   // Ascending — peak value
+  else if (age <= 28) val *= 1.0;   // Prime
+  else if (age <= 30) val *= 0.85;  // Starting to decline
+  else if (age <= 32) val *= 0.65;  // Declining
+  else val *= 0.4;                   // End of career
+
+  // Guaranteed money adds "untradeable" weight — teams avoid trading guys with dead cap
+  if (c.guaranteed > 0) val += Math.min(c.guaranteed * 0.2, 5);
+
+  // QB franchise premium — franchise QBs are nearly untradeable
+  if (p.position === 'QB' && capHit > 25) val += 20;
+  if (p.position === 'QB' && capHit > 40) val += 15;
+
+  // Minimum value — everyone has some worth
+  return Math.max(2, Math.round(val * 10) / 10);
 }
 
 function evaluateTrade(sendPlayers, recvPlayers, sendPicks, recvPicks, myTeamData, partnerTeamData) {
