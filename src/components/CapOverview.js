@@ -1,19 +1,23 @@
 'use client';
-import { SALARY_CAP_2026, formatMoney, POSITION_GROUPS } from '@/lib/constants';
+import { SALARY_CAP_2026, formatMoney } from '@/lib/constants';
+
+// OTC position codes mapped to groups
+const OFF_POSITIONS = ['QB','RB','WR','TE','OT','OG','C','LT','LG','RG','RT','G','T','FB','HB','FL','SE'];
+const DEF_POSITIONS = ['DE','DT','DL','ED','EDGE','IDL','OLB','ILB','LB','CB','S','FS','SS','NT','MLB','SAF','DB','WILL','MIKE','SAM','SLB','WLB'];
+const ST_POSITIONS = ['K','P','LS','KR','PR','ST'];
 
 export default function CapOverview({ roster = [], teamColor = '#b8952e', teamData = null }) {
   const active = roster.filter(p => p.roster_status === 'active' && p.status === 'active');
   const ps = roster.filter(p => p.roster_status === 'practice_squad');
   const dead = roster.filter(p => p.roster_status === 'dead' || p.status === 'free_agent');
 
-  // Use team table data if available (includes rollover + top-51 rule)
-  // Otherwise fall back to summing contracts
+  // Sum from individual contracts
   const activeCap = active.reduce((s, p) => s + (p.contract?.cap_hit || 0), 0);
   const psCap = ps.reduce((s, p) => s + (p.contract?.cap_hit || 0), 0);
   const deadCap = dead.reduce((s, p) => s + (p.contract?.cap_hit || 0), 0);
   const clientCapUsed = activeCap + psCap + deadCap;
 
-  // Prefer DB values from teams table (correct: includes rollover, top-51)
+  // Prefer DB values from teams table (OTC's actual numbers with rollover + top-51)
   const capTotal = teamData?.cap_total || SALARY_CAP_2026;
   const capUsed = teamData?.cap_used != null ? teamData.cap_used : clientCapUsed;
   const space = teamData?.cap_space != null ? teamData.cap_space : (capTotal - clientCapUsed);
@@ -22,13 +26,20 @@ export default function CapOverview({ roster = [], teamColor = '#b8952e', teamDa
   const topQB = Math.max(0, ...active.filter(p => p.position === 'QB').map(p => p.contract?.cap_hit || 0));
   const totalGuar = active.reduce((s, p) => s + (p.contract?.guaranteed || 0), 0);
 
-  // Allocation breakdown (from individual contracts — for the bar)
-  const offCap = active.filter(p => POSITION_GROUPS.offense.includes(p.position)).reduce((s, p) => s + (p.contract?.cap_hit || 0), 0);
-  const defCap = active.filter(p => POSITION_GROUPS.defense.includes(p.position)).reduce((s, p) => s + (p.contract?.cap_hit || 0), 0);
-  const stCap = active.filter(p => POSITION_GROUPS.special.includes(p.position)).reduce((s, p) => s + (p.contract?.cap_hit || 0), 0);
-  const otherCap = activeCap - offCap - defCap - stCap;
-  const totalOff = offCap + (otherCap > 0 ? Math.round(otherCap * offCap / (offCap + defCap || 1) * 10) / 10 : 0);
-  const totalDef = defCap + (otherCap > 0 ? Math.round(otherCap * defCap / (offCap + defCap || 1) * 10) / 10 : 0);
+  // Allocation breakdown using expanded OTC position codes
+  const offCap = active.filter(p => OFF_POSITIONS.includes(p.position)).reduce((s, p) => s + (p.contract?.cap_hit || 0), 0);
+  const defCap = active.filter(p => DEF_POSITIONS.includes(p.position)).reduce((s, p) => s + (p.contract?.cap_hit || 0), 0);
+  const stCap = active.filter(p => ST_POSITIONS.includes(p.position)).reduce((s, p) => s + (p.contract?.cap_hit || 0), 0);
+  const unkCap = activeCap - offCap - defCap - stCap;
+
+  // Distribute unknown-position cap proportionally between O and D
+  const knownTotal = offCap + defCap;
+  const totalOff = knownTotal > 0
+    ? offCap + Math.round(unkCap * (offCap / knownTotal) * 10) / 10
+    : offCap + Math.round(unkCap * 0.55 * 10) / 10;  // Default 55/45 O/D split if no positions known
+  const totalDef = knownTotal > 0
+    ? defCap + Math.round(unkCap * (defCap / knownTotal) * 10) / 10
+    : defCap + Math.round(unkCap * 0.45 * 10) / 10;
 
   const stats = [
     { label: 'ADJUSTED CAP', val: formatMoney(capTotal), color: 'var(--text)' },
@@ -46,7 +57,7 @@ export default function CapOverview({ roster = [], teamColor = '#b8952e', teamDa
     { color: '#b8952e', val: stCap, label: 'ST' },
     { color: '#16a34a', val: psCap, label: 'PS' },
     { color: '#dc2626', val: deadCap, label: 'Dead' },
-  ];
+  ].filter(s => s.val > 0);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -67,15 +78,22 @@ export default function CapOverview({ roster = [], teamColor = '#b8952e', teamDa
         </div>
         <div style={{ height: 10, background: '#f4f5f7', borderRadius: 5, overflow: 'hidden', display: 'flex' }}>
           {segs.map((seg, i) => (
-            <div key={i} style={{ height: '100%', width: `${Math.max((seg.val / (barTotal || 1)) * 100, 0)}%`, background: seg.color, transition: 'width .5s', borderRadius: i === 0 ? '5px 0 0 5px' : i === segs.length - 1 ? '0 5px 5px 0' : 0 }} />
+            <div key={i} style={{
+              height: '100%',
+              width: `${Math.max((seg.val / (barTotal || 1)) * 100, 0.5)}%`,
+              background: seg.color,
+              transition: 'width .5s',
+              borderRadius: i === 0 ? '5px 0 0 5px' : i === segs.length - 1 ? '0 5px 5px 0' : 0,
+            }} />
           ))}
         </div>
-        <div style={{ display: 'flex', gap: 18, marginTop: 10, flexWrap: 'wrap' }}>
-          {segs.map(seg => (
-            <span key={seg.label} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-muted)' }}>
-              <span style={{ width: 8, height: 8, borderRadius: 4, background: seg.color }} />
-              {seg.label} <span style={{ fontFamily: 'var(--mono)', fontWeight: 600, color: 'var(--text-secondary)' }}>{formatMoney(seg.val)}</span>
-            </span>
+        <div style={{ display: 'flex', gap: 14, marginTop: 10, flexWrap: 'wrap' }}>
+          {segs.map((seg, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <div style={{ width: 8, height: 8, borderRadius: 2, background: seg.color }} />
+              <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{seg.label}</span>
+              <span style={{ fontFamily: 'var(--mono)', fontSize: 10, fontWeight: 600, color: 'var(--text)' }}>{formatMoney(seg.val)}</span>
+            </div>
           ))}
         </div>
       </div>

@@ -13,7 +13,7 @@ import TransactionList from '@/components/TransactionList';
 import GMLog from '@/components/GMLog';
 import ProModal from '@/components/ProModal';
 import { getTeamById, SALARY_CAP_2026, formatMoney, teamLogoUrl } from '@/lib/constants';
-import { useRoster, useAllPlayers, useTransactions, useNews, useAllRosters, useDraftPicks, useFreeAgents } from '@/lib/use-data';
+import { useRoster, useTeamData, useAllPlayers, useTransactions, useNews, useAllRosters, useDraftPicks, useFreeAgents } from '@/lib/use-data';
 import { generateFreeAgents } from '@/lib/demo-data';
 
 const TABS = [
@@ -191,7 +191,7 @@ export default function TeamPage() {
           </div>
         </div>
 
-        <CapOverview roster={roster} teamColor={team.color} />
+        <CapOverview roster={roster} teamColor={team.color} teamData={teamData} />
 
         {/* Tabs */}
         <div className="gl-tabs" style={{ margin: '14px 0' }}>
