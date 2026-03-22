@@ -3,17 +3,14 @@ import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import NewsTicker from '@/components/NewsTicker';
-import ProModal from '@/components/ProModal';
 import { NFL_TEAMS, SALARY_CAP_2026, formatMoney, getTeamsByDiv, getTeamsByDivision, teamLogo } from '@/lib/constants';
-import { useTeams, useNews, useAllPlayers, useProStatus } from '@/lib/use-data';
+import { useTeams, useNews, useAllPlayers } from '@/lib/use-data';
 
 export default function HomePage() {
   const router = useRouter();
   const { teams, source } = useTeams();
   const news = useNews();
   const allPlayers = useAllPlayers();
-  const { isPro, setIsPro } = useProStatus();
-  const [showPro, setShowPro] = useState(false);
 
   const teamMap = useMemo(() => {
     if (!teams) return {};
@@ -27,7 +24,7 @@ export default function HomePage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f0f1f3' }}>
-      <Header allPlayers={allPlayers} news={news} onProClick={() => setShowPro(true)} />
+      <Header allPlayers={allPlayers} news={news} />
       <NewsTicker news={news} />
 
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 16px 60px' }}>
@@ -122,10 +119,9 @@ export default function HomePage() {
         )}
 
         <div style={{ textAlign: 'center', fontSize: 11, color: '#c4c9d0', borderTop: '1px solid #eaecf0', paddingTop: 24, marginTop: 32 }}>
-          GridLedger — NFL Salary Cap Command Center • Data from Spotrac • 2026 Season
+          GridLedger — NFL Salary Cap Command Center • Data from OverTheCap • 2026 Season
         </div>
       </div>
-      {showPro && <ProModal show={showPro} onClose={() => setShowPro(false)} onActivatePro={() => { setIsPro(true); setShowPro(false); }} />}
     </div>
   );
 }
