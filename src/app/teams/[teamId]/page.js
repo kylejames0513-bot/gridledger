@@ -11,7 +11,6 @@ import FreeAgentMarket from '@/components/FreeAgentMarket';
 import DraftPicks from '@/components/DraftPicks';
 import TransactionList from '@/components/TransactionList';
 import GMLog from '@/components/GMLog';
-import ProModal from '@/components/ProModal';
 import { getTeamById, SALARY_CAP_2026, formatMoney, teamLogoUrl } from '@/lib/constants';
 import { useRoster, useTeamData, useAllPlayers, useTransactions, useNews, useAllRosters, useDraftPicks, useFreeAgents } from '@/lib/use-data';
 import { generateFreeAgents } from '@/lib/demo-data';
@@ -48,7 +47,6 @@ export default function TeamPage() {
   const [activeTab, setActiveTab] = useState('roster');
   const [modal, setModal] = useState(null);
   const [toast, setToast] = useState('');
-  const [showPro, setShowPro] = useState(false);
 
   const roster = useMemo(() => {
     if (!baseRoster) return [];
@@ -162,9 +160,8 @@ export default function TeamPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
-      <Header allPlayers={allPlayers} news={news} onProClick={() => setShowPro(true)} />
+      <Header allPlayers={allPlayers} news={news} />
       <NewsTicker news={news} />
-      {showPro && <ProModal show={showPro} onClose={() => setShowPro(false)} />}
 
       <main style={{ maxWidth: 1200, margin: '0 auto', padding: '16px 16px 80px' }}>
         <button onClick={() => router.push('/')} className="gl-btn-ghost" style={{ marginBottom: 16 }}>← All Teams</button>

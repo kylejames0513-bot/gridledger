@@ -1,8 +1,8 @@
 'use client';
 import { useState } from 'react';
 
-export default function AuthModal({ onClose, onAuth, auth }) {
-  const [mode, setMode] = useState('login');
+export default function AuthModal({ show, onClose, onAuth }) {
+  const [mode, setMode] = useState('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -10,21 +10,29 @@ export default function AuthModal({ onClose, onAuth, auth }) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
 
+  if (!show) return null;
+
+  const inputStyle = {
+    width: '100%', padding: '10px 14px', borderRadius: 10,
+    border: '1px solid var(--border)', fontSize: 13, outline: 'none',
+    fontFamily: 'var(--font)', background: '#f7f8f9', boxSizing: 'border-box',
+  };
+
   async function handleSubmit(e) {
     e.preventDefault();
-    setError('');
-    setSuccess('');
-    setLoading(true);
-
-    if (mode === 'login') {
-      const { error: err } = await auth.signIn(email, password);
-      if (err) setError(err.message);
-      else { onAuth?.(); onClose(); }
-    } else {
-      if (password.length < 6) { setError('Password must be 6+ characters'); setLoading(false); return; }
-      const { error: err } = await auth.signUp(email, password, name);
-      if (err) setError(err.message);
-      else setSuccess('Check your email for a confirmation link!');
+    setError(''); setLoading(true); setSuccess('');
+    try {
+      if (mode === 'signup') {
+        const res = await onAuth('signup', email, password, name);
+        if (res?.error) throw new Error(res.error.message);
+        setSuccess('Check your email to confirm your account!');
+      } else {
+        const res = await onAuth('signin', email, password);
+        if (res?.error) throw new Error(res.error.message);
+        onClose();
+      }
+    } catch(err) {
+      setError(err.message || 'Something went wrong');
     }
     setLoading(false);
   }
@@ -32,59 +40,54 @@ export default function AuthModal({ onClose, onAuth, auth }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(4px)' }} onClick={onClose}>
       <div style={{ background: '#fff', borderRadius: 20, padding: 32, width: '100%', maxWidth: 400, margin: 16 }} onClick={e => e.stopPropagation()}>
-        {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <svg viewBox="0 0 36 36" fill="none" style={{ width: 40, height: 40, margin: '0 auto 12px' }}>
-            <path d="M18 2L32 10V26L18 34L4 26V10L18 2Z" fill="#1a1d24" stroke="#b8952e" strokeWidth="1.2"/>
-            <path d="M18 12V24M14 16L22 20M22 16L14 20" stroke="#b8952e" strokeWidth="1.5" strokeLinecap="round" opacity="0.7"/>
-          </svg>
-          <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>
-            {mode === 'login' ? 'Welcome Back' : 'Create Account'}
+        <div style={{ textAlign: 'center', marginBottom: 20 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: '#b8952e', marginBottom: 6 }}>GRIDLEDGER</div>
+          <h2 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>
+            {mode === 'signin' ? 'Welcome Back' : 'Create Account'}
           </h2>
-          <p style={{ fontSize: 13, color: '#7a8190' }}>
-            {mode === 'login' ? 'Sign in to your GridLedger account' : 'Join GridLedger and unlock GM tools'}
+          <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>
+            {mode === 'signin' ? 'Sign in to your account' : 'Join the NFL cap community'}
           </p>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <form onSubmit={handleSubmit}>
           {mode === 'signup' && (
-            <div>
-              <label style={{ fontSize: 11, fontWeight: 600, color: '#7a8190', marginBottom: 4, display: 'block' }}>Display Name</label>
-              <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Your name"
-                style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid #eaecf0', fontSize: 14, outline: 'none', fontFamily: 'inherit', background: '#f7f8f9' }} />
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: 'var(--text-faint)', display: 'block', marginBottom: 4 }}>DISPLAY NAME</label>
+              <input value={name} onChange={e => setName(e.target.value)} placeholder="Your name" required style={inputStyle} />
             </div>
           )}
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: '#7a8190', marginBottom: 4, display: 'block' }}>Email</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" required
-              style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid #eaecf0', fontSize: 14, outline: 'none', fontFamily: 'inherit', background: '#f7f8f9' }} />
-          </div>
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: '#7a8190', marginBottom: 4, display: 'block' }}>Password</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required
-              style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid #eaecf0', fontSize: 14, outline: 'none', fontFamily: 'inherit', background: '#f7f8f9' }} />
+          <div style={{ marginBottom: 10 }}>
+            <label style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: 'var(--text-faint)', display: 'block', marginBottom: 4 }}>EMAIL</label>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" required style={inputStyle} />
           </div>
 
-          {error && <div style={{ fontSize: 12, color: '#dc2626', background: '#fef2f2', padding: '8px 12px', borderRadius: 8 }}>{error}</div>}
-          {success && <div style={{ fontSize: 12, color: '#16a34a', background: '#f0fdf4', padding: '8px 12px', borderRadius: 8 }}>{success}</div>}
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: 'var(--text-faint)', display: 'block', marginBottom: 4 }}>PASSWORD</label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} style={inputStyle} />
+          </div>
+
+          {error && <div style={{ padding: '8px 12px', borderRadius: 8, background: '#fef2f2', color: '#dc2626', fontSize: 12, marginBottom: 12, border: '1px solid #fecaca' }}>{error}</div>}
+          {success && <div style={{ padding: '8px 12px', borderRadius: 8, background: '#f0fdf4', color: '#16a34a', fontSize: 12, marginBottom: 12, border: '1px solid #bbf7d0' }}>{success}</div>}
 
           <button type="submit" disabled={loading}
-            style={{ width: '100%', padding: '11px 0', background: '#1a1d24', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: loading ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: loading ? .6 : 1, marginTop: 4 }}>
-            {loading ? '...' : mode === 'login' ? 'Sign In' : 'Create Account'}
+            style={{ width: '100%', padding: '11px 0', borderRadius: 10, fontSize: 14, fontWeight: 700, border: 'none', cursor: loading ? 'wait' : 'pointer', fontFamily: 'inherit',
+              background: loading ? '#e5e7eb' : 'linear-gradient(135deg, #1a1d24, #2a2d34)', color: '#fff' }}>
+            {loading ? 'Please wait...' : mode === 'signin' ? 'Sign In' : 'Create Account'}
           </button>
         </form>
 
-        {/* Toggle */}
-        <div style={{ textAlign: 'center', marginTop: 16, fontSize: 13, color: '#7a8190' }}>
-          {mode === 'login' ? (
-            <span>No account? <button onClick={() => { setMode('signup'); setError(''); setSuccess(''); }} style={{ color: '#b8952e', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }}>Sign up</button></span>
-          ) : (
-            <span>Already have one? <button onClick={() => { setMode('login'); setError(''); setSuccess(''); }} style={{ color: '#b8952e', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }}>Sign in</button></span>
-          )}
+        <div style={{ textAlign: 'center', marginTop: 14 }}>
+          <span style={{ fontSize: 12, color: '#9ca3af' }}>
+            {mode === 'signin' ? "Don't have an account? " : 'Already have an account? '}
+          </span>
+          <button onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(''); setSuccess(''); }}
+            style={{ fontSize: 12, fontWeight: 700, color: '#b8952e', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+            {mode === 'signin' ? 'Sign Up' : 'Sign In'}
+          </button>
         </div>
 
-        <button onClick={onClose} style={{ display: 'block', margin: '12px auto 0', background: 'none', border: 'none', color: '#c4c9d0', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+        <button onClick={onClose} style={{ display: 'block', margin: '14px auto 0', background: 'none', border: 'none', color: '#c4c9d0', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
       </div>
     </div>
   );
