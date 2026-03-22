@@ -11,6 +11,7 @@ import FreeAgentMarket from '@/components/FreeAgentMarket';
 import DraftPicks from '@/components/DraftPicks';
 import TransactionList from '@/components/TransactionList';
 import GMLog from '@/components/GMLog';
+import CommunityChat from '@/components/CommunityChat';
 import ProModal from '@/components/ProModal';
 import { getTeamById, SALARY_CAP_2026, formatMoney, teamLogoUrl } from '@/lib/constants';
 import { useRoster, useTeamData, useAllPlayers, useTransactions, useNews, useAllRosters, useDraftPicks, useFreeAgents } from '@/lib/use-data';
@@ -23,6 +24,7 @@ const TABS = [
   { key: 'picks', label: 'Draft Picks', icon: '🎯' },
   { key: 'tx', label: 'Transactions', icon: '📰' },
   { key: 'gm', label: 'GM Log', icon: '🏈' },
+  { key: 'chat', label: 'Community', icon: '💬' },
 ];
 
 export default function TeamPage() {
@@ -212,6 +214,7 @@ export default function TeamPage() {
         {activeTab === 'picks' && <DraftPicks picks={draftPicks} />}
         {activeTab === 'tx' && <TransactionList transactions={(transactions?.length ? transactions : globalTx) || []} />}
         {activeTab === 'gm' && <GMLog moves={teamGM} onUndo={handleUndo} onReset={handleReset} />}
+        {activeTab === 'chat' && <CommunityChat teamId={teamId} />}
       </main>
 
       {modal && <GMModal action={modal.action} player={modal.player} onConfirm={handleConfirm} onClose={() => setModal(null)} />}
