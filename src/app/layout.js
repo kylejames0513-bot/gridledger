@@ -1,4 +1,5 @@
 import './globals.css';
+import ClientProviders from '@/components/ClientProviders';
 
 export const metadata = {
   title: 'GridLedger — NFL Salary Cap Command Center',
@@ -13,7 +14,7 @@ export default function RootLayout({ children }) {
         <link rel="apple-touch-icon" href="/icon.svg" />
         <meta name="theme-color" content="#1a1d24" />
       </head>
-      <body>{children}</body>
+      <body><ClientProviders>{children}</ClientProviders></body>
     </html>
   );
 }
