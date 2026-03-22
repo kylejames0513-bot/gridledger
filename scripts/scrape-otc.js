@@ -516,6 +516,17 @@ async function syncTeam(team, data, contracts) {
     // Merge contract details from contracts page
     var cd = contracts[p.name.toLowerCase()] || {};
 
+    // Estimate FA year from total value / APY
+    var yearExpires = null;
+    if (cd.totalValue > 0 && cd.apy > 0) {
+      var totalYears = Math.round(cd.totalValue / cd.apy);
+      // Cap page shows 2026 data, so remaining years = totalYears (rough estimate)
+      // Most contracts we see are still active, so FA year ≈ 2026 + remaining - 1
+      if (totalYears >= 1 && totalYears <= 10) {
+        yearExpires = 2025 + totalYears;  // e.g. 4yr deal → FA in 2029
+      }
+    }
+
     var cr = await api('contracts', 'POST', [{
       player_id: match.id,
       team_id: team.id,
@@ -528,7 +539,7 @@ async function syncTeam(team, data, contracts) {
       total_value: toM(cd.totalValue || 0),
       cash_total: toM(cd.apy || 0),              // Store APY in cash_total field
       years: 1,
-      year_expires: null,
+      year_expires: yearExpires,
       is_current: true,
     }]);
     if (cr && cr.length) cc++;
@@ -753,7 +764,7 @@ async function scrapeTransactions() {
       type: typeMap[item.type] || 'other',
       details: item.detail,
       transaction_date: txDate,
-      source: 'nfl.com',
+      source_url: 'https://www.nfl.com/transactions',
       created_at: new Date().toISOString(),
     }]);
     if (r && r.length) ic++;
@@ -776,12 +787,54 @@ async function scrapeNews() {
     var items = [];
 
     $('item').each(function() {
-      var title = $(this).find('title').text().trim();
-      var link = $(this).find('link').text().trim();
-      var desc = $(this).find('description').text().trim().substring(0, 300);
+      var titleRaw = $(this).find('title').text().trim();
+      var linkRaw = $(this).find('link').text().trim();
+      var descRaw = $(this).find('description').text().trim();
       var pubDate = $(this).find('pubDate').text().trim();
-      if (title.length > 5) items.push({ title: title, link: link, desc: desc, date: pubDate });
+
+      // Handle CDATA wrapped content
+      var title = titleRaw.replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').trim();
+      var link = linkRaw.replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').trim();
+      var desc = descRaw.replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1')
+        .replace(/<[^>]+>/g, '')  // Strip HTML tags from description
+        .trim()
+        .substring(0, 300);
+
+      // Categorize from keywords in title
+      var titleLower = (title + ' ' + desc).toLowerCase();
+      var type = 'news';
+      if (/trade[sd]?|traded|deal|swap|acquir/i.test(titleLower)) type = 'trade';
+      else if (/sign[sed]?|agree|contract|deal|free.?agent|ink/i.test(titleLower)) type = 'signing';
+      else if (/cut|release[sd]?|waive[sd]?|terminat|designat/i.test(titleLower)) type = 'cut';
+      else if (/restructur|extend|extension|rework/i.test(titleLower)) type = 'restructure';
+      else if (/injur|ir |reserve|out for|miss/i.test(titleLower)) type = 'injury';
+      else if (/draft|pick|select|combine|mock/i.test(titleLower)) type = 'draft';
+
+      if (title.length > 5) {
+        items.push({ title: title, link: link, desc: desc, date: pubDate, type: type });
+      }
     });
+
+    // If ESPN RSS returned nothing, try NFL.com RSS as fallback
+    if (items.length === 0) {
+      console.log('    ESPN RSS empty, trying NFL.com...');
+      try {
+        var nflHtml = await fetchPage('https://www.nfl.com/feeds-rs/headlines.rss');
+        var $n = cheerio.load(nflHtml, { xmlMode: true });
+        $n('item').each(function() {
+          var title = $n(this).find('title').text().replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').trim();
+          var link = $n(this).find('link').text().replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').trim();
+          var desc = $n(this).find('description').text().replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').replace(/<[^>]+>/g, '').trim().substring(0, 300);
+          var pubDate = $n(this).find('pubDate').text().trim();
+          var titleLower = title.toLowerCase();
+          var type = 'news';
+          if (/trade/i.test(titleLower)) type = 'trade';
+          else if (/sign|free.?agent|contract/i.test(titleLower)) type = 'signing';
+          else if (/cut|release|waive/i.test(titleLower)) type = 'cut';
+          if (title.length > 5) items.push({ title: title, link: link, desc: desc, date: pubDate, type: type });
+        });
+      } catch(e2) { console.log('    NFL.com RSS also failed'); }
+    }
 
     console.log('    Found ' + items.length + ' articles');
     if (!items.length) return 0;
@@ -789,10 +842,11 @@ async function scrapeNews() {
     var ic = 0;
     for (var i = 0; i < Math.min(items.length, 30); i++) {
       var r = await api('news', 'POST', [{
-        title: items[i].title,
-        summary: items[i].desc || items[i].title,
+        headline: items[i].title,
+        body: items[i].desc || items[i].title,
         source: 'ESPN',
-        url: items[i].link,
+        source_url: items[i].link,
+        category: items[i].type || 'other',
         published_at: items[i].date ? new Date(items[i].date).toISOString() : new Date().toISOString(),
       }]);
       if (r && r.length) ic++;

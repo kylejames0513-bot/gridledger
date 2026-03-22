@@ -50,13 +50,16 @@ export default function CapOverview({ roster = [], teamColor = '#b8952e', teamDa
     { label: 'GUARANTEED', val: formatMoney(totalGuar), color: 'var(--orange)' },
   ];
 
-  const barTotal = totalOff + totalDef + stCap + psCap + deadCap;
+  const barTotal = capTotal; // Always use full cap ceiling ($301.2M) as bar width
+  const usedTotal = totalOff + totalDef + stCap + psCap + deadCap;
+  const freeSpace = Math.max(0, capTotal - usedTotal);
   const segs = [
     { color: '#3b82f6', val: totalOff, label: 'Offense' },
     { color: '#8b5cf6', val: totalDef, label: 'Defense' },
     { color: '#b8952e', val: stCap, label: 'ST' },
     { color: '#16a34a', val: psCap, label: 'PS' },
     { color: '#dc2626', val: deadCap, label: 'Dead' },
+    { color: 'transparent', val: freeSpace, label: 'Available' },
   ].filter(s => s.val > 0);
 
   return (
@@ -90,9 +93,9 @@ export default function CapOverview({ roster = [], teamColor = '#b8952e', teamDa
         <div style={{ display: 'flex', gap: 14, marginTop: 10, flexWrap: 'wrap' }}>
           {segs.map((seg, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <div style={{ width: 8, height: 8, borderRadius: 2, background: seg.color }} />
+              <div style={{ width: 8, height: 8, borderRadius: 2, background: seg.color === 'transparent' ? '#e5e7eb' : seg.color, border: seg.color === 'transparent' ? '1px solid #d1d5db' : 'none' }} />
               <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{seg.label}</span>
-              <span style={{ fontFamily: 'var(--mono)', fontSize: 10, fontWeight: 600, color: 'var(--text)' }}>{formatMoney(seg.val)}</span>
+              <span style={{ fontFamily: 'var(--mono)', fontSize: 10, fontWeight: 600, color: seg.color === 'transparent' ? 'var(--green)' : 'var(--text)' }}>{formatMoney(seg.val)}</span>
             </div>
           ))}
         </div>
