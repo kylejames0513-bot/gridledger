@@ -32,6 +32,7 @@ export default function TeamPage() {
   const team = getTeamById(teamId);
 
   const { roster: baseRoster, source: rosterSource } = useRoster(teamId);
+  const teamData = useTeamData(teamId);
   const allPlayers = useAllPlayers();
   const transactions = useTransactions(teamId);
   const globalTx = useTransactions();
