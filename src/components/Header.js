@@ -124,6 +124,20 @@ export default function Header({ allPlayers = [], news = [] }) {
                     ⭐ Upgrade to Pro
                   </button>
                 )}
+                <button onClick={() => { setShowUser(false); router.push('/profile'); }}
+                  style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-secondary)', transition: 'background .1s' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--card-hover)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  👤 Profile
+                </button>
+                {['kylejames0513@gmail.com'].includes(auth.user.email) && (
+                  <button onClick={() => { setShowUser(false); router.push('/admin'); }}
+                    style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, color: 'var(--purple)', transition: 'background .1s' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#f3e8ff'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                    🛡️ Admin
+                  </button>
+                )}
                 <button onClick={() => { setShowUser(false); auth.signOut(); }}
                   style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, color: 'var(--red)', transition: 'background .1s' }}
                   onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}

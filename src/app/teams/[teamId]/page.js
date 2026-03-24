@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import NewsTicker from '@/components/NewsTicker';
@@ -15,6 +15,7 @@ import { getTeamById, SALARY_CAP_2026, formatMoney, teamLogoUrl } from '@/lib/co
 import { useRoster, useTeamData, useAllPlayers, useTransactions, useNews, useAllRosters, useDraftPicks, useFreeAgents } from '@/lib/use-data';
 import { generateFreeAgents } from '@/lib/demo-data';
 import { useGLAuth } from '@/components/ClientProviders';
+import { getSupabase } from '@/lib/supabase';
 
 const TABS = [
   { key: 'roster', label: 'Roster', icon: '📋' },
@@ -50,6 +51,37 @@ export default function TeamPage() {
   const [activeTab, setActiveTab] = useState('roster');
   const [modal, setModal] = useState(null);
   const [toast, setToast] = useState('');
+  const [scenarioId, setScenarioId] = useState(null);
+
+  // Load saved scenario for this team
+  useEffect(() => {
+    if (!isLoggedIn || !teamId) return;
+    const sb = getSupabase();
+    if (!sb) return;
+    (async () => {
+      try {
+        const { data } = await sb.from('gm_scenarios')
+          .select('*, gm_moves(*)')
+          .eq('user_id', auth.user.id)
+          .eq('team_id', teamId)
+          .eq('is_active', true)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .single();
+        if (data) {
+          setScenarioId(data.id);
+          // Restore moves from DB
+          if (data.gm_moves?.length) {
+            setGmMoves(data.gm_moves.map(m => ({
+              ...m, teamId: m.details?.teamId || teamId,
+              move_type: m.move_type, player_name: m.player_name,
+              cap_impact: m.cap_impact, id: m.id,
+            })));
+          }
+        }
+      } catch(e) { /* no saved scenario, that's fine */ }
+    })();
+  }, [isLoggedIn, teamId, auth?.user?.id]);
 
   const roster = useMemo(() => {
     if (!baseRoster) return [];
@@ -63,7 +95,32 @@ export default function TeamPage() {
   const teamGM = gmMoves.filter(m => m.teamId === teamId);
 
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(''), 2500); }
-  function addMove(move) { setGmMoves(prev => [...prev, { ...move, teamId, id: Date.now() }]); }
+  async function addMove(move) {
+    const newMove = { ...move, teamId, id: Date.now() };
+    setGmMoves(prev => [...prev, newMove]);
+    // Auto-save to Supabase if logged in
+    if (!isLoggedIn) return;
+    const sb = getSupabase();
+    if (!sb) return;
+    try {
+      let sid = scenarioId;
+      if (!sid) {
+        const { data } = await sb.from('gm_scenarios').insert({
+          user_id: auth.user.id, team_id: teamId,
+          session_id: auth.user.id, name: `${team?.name || teamId} Scenario`,
+        }).select().single();
+        if (data) { sid = data.id; setScenarioId(sid); }
+      }
+      if (sid) {
+        await sb.from('gm_moves').insert({
+          scenario_id: sid, move_type: move.move_type,
+          player_name: move.player_name, details: move.details || {},
+          cap_impact: move.cap_impact || 0, move_order: gmMoves.length,
+        });
+        await sb.from('gm_scenarios').update({ updated_at: new Date().toISOString() }).eq('id', sid);
+      }
+    } catch(e) { console.error('Auto-save failed:', e); }
+  }
   function handleAction(action, player) { setModal({ action, player }); }
 
   function handleConfirm(action, player, details) {
