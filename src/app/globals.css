@@ -46,7 +46,7 @@ body {
 @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.3} }
 @keyframes slide-up { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
 
-.animate-ticker { animation: ticker 55s linear infinite; }
+.animate-ticker { animation: ticker 120s linear infinite; }
 .animate-ticker:hover { animation-play-state: paused; }
 .animate-toast { animation: fade-toast 2.5s ease forwards; }
 .animate-pulse-dot { animation: pulse-dot 1.5s ease infinite; }

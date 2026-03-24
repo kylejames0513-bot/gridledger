@@ -102,16 +102,26 @@ export default function HomePage() {
         {/* News */}
         {news && news.length > 0 && (
           <div style={{ marginBottom: 40 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: '#b0b5be', marginBottom: 10 }}>LATEST TRANSACTIONS</div>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: '#b0b5be', marginBottom: 10 }}>LATEST NEWS</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {news.slice(0, 6).map((n, i) => {
-                const tc = { trade: { bg: '#f3e8ff', fg: '#7c3aed' }, signing: { bg: '#dcfce7', fg: '#16a34a' }, cut: { bg: '#fef2f2', fg: '#dc2626' }, restructure: { bg: '#dbeafe', fg: '#2563eb' } };
-                const c = tc[n.type] || { bg: '#fef3c7', fg: '#b8952e' };
+              {news.filter(n => (n.title || '').length > 15).slice(0, 6).map((n, i) => {
+                const tc = { trade: { bg: '#f3e8ff', fg: '#7c3aed' }, signing: { bg: '#dcfce7', fg: '#16a34a' }, cut: { bg: '#fef2f2', fg: '#dc2626' }, restructure: { bg: '#dbeafe', fg: '#2563eb' }, injury: { bg: '#fef3c7', fg: '#d97706' }, draft: { bg: '#e0e7ff', fg: '#4f46e5' } };
+                const c = tc[n.type] || { bg: '#f3f4f6', fg: '#6b7280' };
+                const url = n.url || n.source_url;
+                const Wrap = url ? 'a' : 'div';
+                const wrapProps = url ? { href: url, target: '_blank', rel: 'noopener noreferrer', style: { textDecoration: 'none', color: 'inherit' } } : {};
                 return (
-                  <div key={i} className="gl-card" style={{ padding: 12, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                    <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, padding: '3px 8px', borderRadius: 5, flexShrink: 0, background: c.bg, color: c.fg, textTransform: 'uppercase' }}>{n.type || 'news'}</span>
-                    <div style={{ fontSize: 13, color: '#7a8190', lineHeight: 1.4 }}>{n.title}</div>
-                  </div>
+                  <Wrap key={i} {...wrapProps}>
+                    <div className="gl-card" style={{ padding: 12, display: 'flex', gap: 10, alignItems: 'flex-start', cursor: url ? 'pointer' : 'default', transition: 'border-color .15s' }}
+                      onMouseEnter={e => { if (url) e.currentTarget.style.borderColor = 'var(--gold-border)'; }}
+                      onMouseLeave={e => e.currentTarget.style.borderColor = ''}>
+                      <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, padding: '3px 8px', borderRadius: 5, flexShrink: 0, background: c.bg, color: c.fg, textTransform: 'uppercase' }}>{n.type || 'news'}</span>
+                      <div>
+                        <div style={{ fontSize: 13, color: '#4a5060', lineHeight: 1.4, fontWeight: 500 }}>{n.title}</div>
+                        <div style={{ fontSize: 9, color: '#c4c9d0', marginTop: 3 }}>{n.source || 'ESPN'} {n.published_at ? '• ' + new Date(n.published_at).toLocaleDateString() : ''}</div>
+                      </div>
+                    </div>
+                  </Wrap>
                 );
               })}
             </div>

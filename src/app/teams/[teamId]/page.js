@@ -14,6 +14,7 @@ import GMLog from '@/components/GMLog';
 import { getTeamById, SALARY_CAP_2026, formatMoney, teamLogoUrl } from '@/lib/constants';
 import { useRoster, useTeamData, useAllPlayers, useTransactions, useNews, useAllRosters, useDraftPicks, useFreeAgents } from '@/lib/use-data';
 import { generateFreeAgents } from '@/lib/demo-data';
+import { useGLAuth } from '@/components/ClientProviders';
 
 const TABS = [
   { key: 'roster', label: 'Roster', icon: '📋' },
@@ -39,6 +40,8 @@ export default function TeamPage() {
   const { rosters: allBaseRosters, loaded: rostersLoaded } = useAllRosters();
   const draftPicks = useDraftPicks(teamId);
   const { freeAgents, setFreeAgents } = useFreeAgents();
+  const auth = useGLAuth();
+  const isLoggedIn = !!auth?.user;
 
   const [localModifications, setLocalModifications] = useState({});
   const [addedPlayers, setAddedPlayers] = useState([]);
@@ -193,22 +196,37 @@ export default function TeamPage() {
 
         {/* Tabs */}
         <div className="gl-tabs" style={{ margin: '14px 0' }}>
-          {TABS.map(t => (
-            <button key={t.key} onClick={() => setActiveTab(t.key)} className={`gl-tab ${activeTab === t.key ? 'active' : ''}`}>
-              <span style={{ fontSize: 13 }}>{t.icon}</span>
-              <span className="hide-mobile">{t.label}</span>
-              {t.key === 'gm' && teamGM.length > 0 && <span style={{ fontFamily: 'var(--mono)', fontSize: 9, opacity: .5 }}>({teamGM.length})</span>}
-              {t.key === 'fa' && <span style={{ fontFamily: 'var(--mono)', fontSize: 9, opacity: .5 }}>{freeAgents.length}</span>}
-            </button>
-          ))}
+          {TABS.map(t => {
+            const locked = !isLoggedIn && ['fa', 'trade', 'gm'].includes(t.key);
+            return (
+              <button key={t.key} onClick={() => locked ? auth?.openAuth?.() : setActiveTab(t.key)}
+                className={`gl-tab ${activeTab === t.key ? 'active' : ''}`}
+                style={locked ? { opacity: 0.5 } : {}}>
+                <span style={{ fontSize: 13 }}>{t.icon}</span>
+                <span className="hide-mobile">{t.label}</span>
+                {locked && <span style={{ fontSize: 9 }}>🔒</span>}
+                {!locked && t.key === 'gm' && teamGM.length > 0 && <span style={{ fontFamily: 'var(--mono)', fontSize: 9, opacity: .5 }}>({teamGM.length})</span>}
+                {!locked && t.key === 'fa' && <span style={{ fontFamily: 'var(--mono)', fontSize: 9, opacity: .5 }}>{freeAgents.length}</span>}
+              </button>
+            );
+          })}
         </div>
 
-        {activeTab === 'roster' && <RosterTable roster={roster} onAction={handleAction} showActions={true} />}
-        {activeTab === 'fa' && <FreeAgentMarket freeAgents={freeAgents} capSpace={capSpace} onSign={handleSignFA} />}
-        {activeTab === 'trade' && <TradeSimulator teamId={teamId} roster={roster} allRosters={allRosters} onExecuteTrade={handleTrade} teamData={teamData} />}
+        {activeTab === 'roster' && <RosterTable roster={roster} onAction={isLoggedIn ? handleAction : () => auth?.openAuth?.()} showActions={isLoggedIn} />}
+        {activeTab === 'fa' && (isLoggedIn
+          ? <FreeAgentMarket freeAgents={freeAgents} capSpace={capSpace} onSign={handleSignFA} />
+          : <LockedPanel onUnlock={() => auth?.openAuth?.()} feature="Free Agent Market" />
+        )}
+        {activeTab === 'trade' && (isLoggedIn
+          ? <TradeSimulator teamId={teamId} roster={roster} allRosters={allRosters} onExecuteTrade={handleTrade} teamData={teamData} />
+          : <LockedPanel onUnlock={() => auth?.openAuth?.()} feature="Trade Simulator" />
+        )}
         {activeTab === 'picks' && <DraftPicks picks={draftPicks} />}
         {activeTab === 'tx' && <TransactionList transactions={(transactions?.length ? transactions : globalTx) || []} />}
-        {activeTab === 'gm' && <GMLog moves={teamGM} onUndo={handleUndo} onReset={handleReset} />}
+        {activeTab === 'gm' && (isLoggedIn
+          ? <GMLog moves={teamGM} onUndo={handleUndo} onReset={handleReset} />
+          : <LockedPanel onUnlock={() => auth?.openAuth?.()} feature="GM Log" />
+        )}
       </main>
 
       {modal && <GMModal action={modal.action} player={modal.player} onConfirm={handleConfirm} onClose={() => setModal(null)} />}
@@ -227,6 +245,24 @@ export default function TeamPage() {
           <button onClick={handleUndo} className="gl-btn gl-btn-gold" style={{ padding: '5px 14px', fontSize: 10, borderRadius: 7 }}>↺ Undo</button>
         </div>
       )}
+    </div>
+  );
+}
+
+
+function LockedPanel({ onUnlock, feature }) {
+  return (
+    <div className="gl-card" style={{ padding: 48, textAlign: 'center' }}>
+      <div style={{ fontSize: 40, marginBottom: 12, opacity: 0.5 }}>🔒</div>
+      <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>{feature}</div>
+      <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 18, maxWidth: 320, margin: '0 auto 18px' }}>
+        Sign in or create a free account to access {feature.toLowerCase()}, GM tools, and more.
+      </div>
+      <button onClick={onUnlock}
+        style={{ padding: '10px 28px', borderRadius: 10, fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'var(--font)',
+          background: 'linear-gradient(135deg, #1a1d24, #2a2d34)', color: '#fff' }}>
+        Sign In to Unlock
+      </button>
     </div>
   );
 }

@@ -166,7 +166,7 @@ export function useNews() {
         try {
           const { data } = await sb.from('news').select('*').order('published_at', { ascending: false }).limit(20);
           if (data?.length) {
-            setNews(data.map(n => ({ ...n, title: n.headline || n.title, type: n.category || n.type })));
+            setNews(data.map(n => ({ ...n, title: n.headline || n.title, type: n.category || n.type, url: n.source_url || n.url })));
             return;
           }
         } catch(e) {}
