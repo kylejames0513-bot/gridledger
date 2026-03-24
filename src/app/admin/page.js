@@ -118,14 +118,14 @@ export default function AdminPage() {
 
         {/* Users table */}
         <div className="gl-card" style={{ overflow: 'hidden' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 80px 80px 100px 120px', gap: 8, padding: '10px 16px', background: '#fafbfc', borderBottom: '1px solid var(--border)', fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: 'var(--text-faint)' }}>
-            <span>NAME</span><span>EMAIL</span><span>STATUS</span><span>TEAM</span><span>JOINED</span><span>ACTIONS</span>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 70px 70px 80px 90px 130px', gap: 8, padding: '10px 16px', background: '#fafbfc', borderBottom: '1px solid var(--border)', fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: 'var(--text-faint)' }}>
+            <span>NAME</span><span>EMAIL</span><span>STATUS</span><span>VERIFIED</span><span>TEAM</span><span>JOINED</span><span>ACTIONS</span>
           </div>
 
           {loading ? (
             <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}>Loading users...</div>
           ) : filtered.map(u => (
-            <div key={u.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 80px 80px 100px 120px', gap: 8, padding: '10px 16px', borderBottom: '1px solid var(--border-light)', alignItems: 'center', fontSize: 12 }}>
+            <div key={u.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 70px 70px 80px 90px 130px', gap: 8, padding: '10px 16px', borderBottom: '1px solid var(--border-light)', alignItems: 'center', fontSize: 12 }}>
               <span style={{ fontWeight: 600, color: 'var(--text)' }}>{u.display_name || '—'}</span>
               <span style={{ color: 'var(--text-muted)', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.email}</span>
               <span>
@@ -133,6 +133,9 @@ export default function AdminPage() {
                   ? <span style={{ fontSize: 9, fontWeight: 700, color: '#fff', background: 'linear-gradient(135deg, #b8952e, #9a7c22)', padding: '2px 8px', borderRadius: 4 }}>PRO</span>
                   : <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--text-muted)', background: '#f3f4f6', padding: '2px 8px', borderRadius: 4 }}>FREE</span>
                 }
+              </span>
+              <span style={{ fontSize: 9, color: u.email_confirmed ? 'var(--green)' : 'var(--red)' }}>
+                {u.email_confirmed ? '✓ Yes' : '✗ No'}
               </span>
               <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--text-muted)' }}>{u.favorite_team || '—'}</span>
               <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--text-faint)' }}>
