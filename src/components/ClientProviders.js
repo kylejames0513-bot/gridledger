@@ -48,10 +48,14 @@ export default function ClientProviders({ children }) {
   const handleAuth = useCallback(async (mode, email, password, displayName) => {
     const sb = getSupabase();
     if (!sb) return { error: { message: 'Not connected' } };
+    const siteUrl = window.location.origin;
     if (mode === 'signup') {
       const { data, error } = await sb.auth.signUp({
         email, password,
-        options: { data: { display_name: displayName } },
+        options: {
+          data: { display_name: displayName },
+          emailRedirectTo: `${siteUrl}/auth/confirm`,
+        },
       });
       return { data, error };
     } else {
