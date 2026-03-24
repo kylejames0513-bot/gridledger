@@ -43,6 +43,8 @@ export default function TeamPage() {
   const { freeAgents, setFreeAgents } = useFreeAgents();
   const auth = useGLAuth();
   const isLoggedIn = !!auth?.user;
+  const isPro = auth?.isPro || false;
+  const FREE_MOVE_LIMIT = 3;
 
   const [localModifications, setLocalModifications] = useState({});
   const [addedPlayers, setAddedPlayers] = useState([]);
@@ -121,7 +123,14 @@ export default function TeamPage() {
       }
     } catch(e) { console.error('Auto-save failed:', e); }
   }
-  function handleAction(action, player) { setModal({ action, player }); }
+  function handleAction(action, player) {
+  if (!isPro && teamGM.length >= FREE_MOVE_LIMIT) {
+    auth?.openPro?.();
+    showToast('Free accounts limited to ' + FREE_MOVE_LIMIT + ' moves — upgrade to Pro');
+    return;
+  }
+  setModal({ action, player });
+}
 
   function handleConfirm(action, player, details) {
     const c = player.contract || {};
@@ -270,19 +279,27 @@ export default function TeamPage() {
         </div>
 
         {activeTab === 'roster' && <RosterTable roster={roster} onAction={isLoggedIn ? handleAction : () => auth?.openAuth?.()} showActions={isLoggedIn} />}
-        {activeTab === 'fa' && (isLoggedIn
-          ? <FreeAgentMarket freeAgents={freeAgents} capSpace={capSpace} onSign={handleSignFA} />
-          : <LockedPanel onUnlock={() => auth?.openAuth?.()} feature="Free Agent Market" />
+        {activeTab === 'fa' && (!isLoggedIn
+          ? <LockedPanel onUnlock={() => auth?.openAuth?.()} feature="Free Agent Market" />
+          : !isPro
+          ? <ProGate feature="Full Free Agent Negotiations" onUpgrade={() => auth?.openPro?.()}>
+              <FreeAgentMarket freeAgents={freeAgents} capSpace={capSpace} onSign={null} />
+            </ProGate>
+          : <FreeAgentMarket freeAgents={freeAgents} capSpace={capSpace} onSign={handleSignFA} />
         )}
-        {activeTab === 'trade' && (isLoggedIn
-          ? <TradeSimulator teamId={teamId} roster={roster} allRosters={allRosters} onExecuteTrade={handleTrade} teamData={teamData} />
-          : <LockedPanel onUnlock={() => auth?.openAuth?.()} feature="Trade Simulator" />
+        {activeTab === 'trade' && (!isLoggedIn
+          ? <LockedPanel onUnlock={() => auth?.openAuth?.()} feature="Trade Simulator" />
+          : !isPro
+          ? <ProGate feature="Execute Trades" onUpgrade={() => auth?.openPro?.()}>
+              <TradeSimulator teamId={teamId} roster={roster} allRosters={allRosters} onExecuteTrade={null} teamData={teamData} />
+            </ProGate>
+          : <TradeSimulator teamId={teamId} roster={roster} allRosters={allRosters} onExecuteTrade={handleTrade} teamData={teamData} />
         )}
         {activeTab === 'picks' && <DraftPicks picks={draftPicks} />}
         {activeTab === 'tx' && <TransactionList transactions={(transactions?.length ? transactions : globalTx) || []} />}
-        {activeTab === 'gm' && (isLoggedIn
-          ? <GMLog moves={teamGM} onUndo={handleUndo} onReset={handleReset} />
-          : <LockedPanel onUnlock={() => auth?.openAuth?.()} feature="GM Log" />
+        {activeTab === 'gm' && (!isLoggedIn
+          ? <LockedPanel onUnlock={() => auth?.openAuth?.()} feature="GM Log" />
+          : <GMLog moves={teamGM} onUndo={handleUndo} onReset={handleReset} />
         )}
       </main>
 
@@ -320,6 +337,22 @@ function LockedPanel({ onUnlock, feature }) {
           background: 'linear-gradient(135deg, #1a1d24, #2a2d34)', color: '#fff' }}>
         Sign In to Unlock
       </button>
+    </div>
+  );
+}
+
+function ProGate({ feature, onUpgrade, children }) {
+  return (
+    <div style={{ position: 'relative' }}>
+      {children}
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,.85)', backdropFilter: 'blur(2px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRadius: 14, zIndex: 10 }}>
+        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: 'var(--gold)', marginBottom: 8 }}>PRO FEATURE</div>
+        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>{feature}</div>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14, textAlign: 'center', maxWidth: 280 }}>Browse freely — upgrade to Pro to execute moves</div>
+        <button onClick={onUpgrade} style={{ padding: '10px 24px', borderRadius: 10, fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', background: 'linear-gradient(135deg, #b8952e, #9a7c22)', color: '#fff' }}>
+          Upgrade to Pro
+        </button>
+      </div>
     </div>
   );
 }

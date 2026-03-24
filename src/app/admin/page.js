@@ -23,7 +23,8 @@ export default function AdminPage() {
   const isAdmin = auth?.user && ADMIN_EMAILS.includes(auth.user.email);
 
   useEffect(() => {
-    if (!auth?.loading && !isAdmin) return;
+    if (auth?.loading) return;  // Wait for auth to finish
+    if (!isAdmin) return;       // Not admin, don't fetch
     loadUsers();
   }, [auth?.loading, isAdmin]);
 
@@ -31,9 +32,10 @@ export default function AdminPage() {
     try {
       const res = await fetch('/api/admin/users');
       const data = await res.json();
+      if (data.error) { console.error('Admin API error:', data.error); }
       if (data.users) setUsers(data.users);
       if (data.stats) setStats(data.stats);
-    } catch(e) {}
+    } catch(e) { console.error('Admin load failed:', e); }
     setLoading(false);
   }
 
