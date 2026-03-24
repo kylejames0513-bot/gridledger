@@ -7,12 +7,7 @@ export async function GET() {
 
   // Debug info
   if (!url || !key) {
-    return NextResponse.json({
-      error: 'Missing env vars',
-      has_url: !!url,
-      has_key: !!key,
-      key_prefix: key ? key.substring(0, 20) + '...' : 'MISSING',
-    }, { status: 503 });
+    return NextResponse.json({ error: 'Missing env vars' }, { status: 503 });
   }
 
   // Use service role with full admin access
@@ -24,12 +19,7 @@ export async function GET() {
     // Get auth users directly (most reliable)
     const { data: authData, error: authErr } = await supabase.auth.admin.listUsers();
     if (authErr) {
-      return NextResponse.json({
-        error: 'Auth admin error: ' + authErr.message,
-        key_prefix: key.substring(0, 20) + '...',
-        key_length: key.length,
-        url: url,
-      }, { status: 500 });
+      return NextResponse.json({ error: 'Auth admin error: ' + authErr.message }, { status: 500 });
     }
     const authUsers = authData?.users || [];
 

@@ -26,6 +26,26 @@
   --mono: 'DM Mono', 'Menlo', monospace;
 }
 
+[data-theme="dark"] {
+  --bg: #0f1117;
+  --card: #1a1d24;
+  --card-hover: #22252e;
+  --border: #2a2d36;
+  --border-light: #22252e;
+  --text: #e8eaed;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+  --text-faint: #4b5563;
+  --gold: #d4a843;
+  --gold-light: rgba(212,168,67,.1);
+  --gold-border: rgba(212,168,67,.2);
+  --green: #22c55e;
+  --red: #ef4444;
+  --blue: #3b82f6;
+  --purple: #a78bfa;
+  --orange: #f59e0b;
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
@@ -153,6 +173,21 @@ body {
 
 /* Mobile player cards */
 .player-card-mobile { display: none; }
+
+
+/* Dark mode overrides for hardcoded inline styles */
+[data-theme="dark"] header { background: var(--card) !important; border-color: var(--border) !important; }
+[data-theme="dark"] .gl-card { background: var(--card); border-color: var(--border); }
+[data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea {
+  background: var(--card) !important; color: var(--text) !important; border-color: var(--border) !important;
+}
+[data-theme="dark"] .gl-btn-ghost { background: var(--card); border-color: var(--border); color: var(--text-secondary); }
+[data-theme="dark"] .pos-badge { opacity: 0.9; }
+[data-theme="dark"] .gl-tabs { background: var(--card); border-color: var(--border); }
+[data-theme="dark"] .gl-tab.active { background: var(--card-hover); color: var(--gold); }
+
+
+/* Enhanced mobile responsive */
 @media (max-width: 768px) {
   .gl-table-wrap { display: none !important; }
   .player-card-mobile { display: flex !important; }
@@ -161,8 +196,16 @@ body {
   .hero-stats-4, .stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .trade-grid { grid-template-columns: 1fr !important; }
   .hide-mobile { display: none !important; }
+  header { padding: 0 12px !important; }
+  header input { font-size: 12px !important; }
+  main { padding: 12px 10px 70px !important; }
+  .gl-tabs { gap: 1px; padding: 3px; }
+  .gl-tab { padding: 7px 10px !important; font-size: 11px !important; }
+  .gl-card { border-radius: 12px !important; }
 }
 @media (max-width: 480px) {
   .cap-grid-6 { grid-template-columns: repeat(2, 1fr) !important; }
   .div-grid-4, .div-grid { grid-template-columns: 1fr !important; }
+  h1 { font-size: 22px !important; }
+  .gl-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap; }
 }

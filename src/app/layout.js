@@ -13,6 +13,7 @@ export default function RootLayout({ children }) {
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/icon.svg" />
         <meta name="theme-color" content="#1a1d24" />
+        <script dangerouslySetInnerHTML={{ __html: `try{if(localStorage.getItem('gl_theme')==='dark')document.documentElement.setAttribute('data-theme','dark')}catch(e){}` }} />
       </head>
       <body><ClientProviders>{children}</ClientProviders></body>
     </html>

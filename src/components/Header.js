@@ -11,7 +11,23 @@ export default function Header({ allPlayers = [], news = [] }) {
   const [focused, setFocused] = useState(false);
   const [showNotif, setShowNotif] = useState(false);
   const [showUser, setShowUser] = useState(false);
+  const [dark, setDark] = useState(false);
   const ref = useRef(null);
+
+  // Load theme on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('gl_theme');
+      if (saved === 'dark') { setDark(true); document.documentElement.setAttribute('data-theme', 'dark'); }
+    } catch(e) {}
+  }, []);
+
+  function toggleTheme() {
+    const next = !dark;
+    setDark(next);
+    document.documentElement.setAttribute('data-theme', next ? 'dark' : 'light');
+    try { localStorage.setItem('gl_theme', next ? 'dark' : 'light'); } catch(e) {}
+  }
 
   const results = useMemo(() => {
     if (search.length < 2) return [];
@@ -100,6 +116,12 @@ export default function Header({ allPlayers = [], news = [] }) {
         <div className="hide-mobile" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 9, fontWeight: 700, letterSpacing: 2, color: 'var(--red)' }}>
           <span className="animate-pulse-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--red)' }} /> LIVE
         </div>
+
+        {/* Dark mode toggle */}
+        <button onClick={toggleTheme} title={dark ? 'Light mode' : 'Dark mode'}
+          style={{ padding: '5px 8px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--card)', cursor: 'pointer', fontSize: 14, lineHeight: 1, display: 'flex', alignItems: 'center' }}>
+          {dark ? '☀️' : '🌙'}
+        </button>
 
         {/* User / Sign In */}
         {auth?.user ? (
