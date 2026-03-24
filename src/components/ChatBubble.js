@@ -11,7 +11,6 @@ const FLAIRS = [
 ];
 
 export default function ChatBubble({ auth }) {
-  const auth = useGLAuth();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
