@@ -130,7 +130,7 @@ export default function Header({ allPlayers = [], news = [] }) {
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                   👤 Profile
                 </button>
-                {['kylejames0513@gmail.com'].includes(auth.user.email) && (
+                {['kylejames0513@icloud.com'].includes(auth.user.email) && (
                   <button onClick={() => { setShowUser(false); router.push('/admin'); }}
                     style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, color: 'var(--purple)', transition: 'background .1s' }}
                     onMouseEnter={e => e.currentTarget.style.background = '#f3e8ff'}

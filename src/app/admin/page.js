@@ -7,7 +7,7 @@ import { useNews, useAllPlayers } from '@/lib/use-data';
 import { getSupabase } from '@/lib/supabase';
 
 // Add your email(s) here
-const ADMIN_EMAILS = ['kylejames0513@gmail.com'];
+const ADMIN_EMAILS = ['kylejames0513@icloud.com'];
 
 export default function AdminPage() {
   const auth = useGLAuth();
