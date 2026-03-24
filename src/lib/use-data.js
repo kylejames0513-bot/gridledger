@@ -108,8 +108,8 @@ export function useAllRosters() {
       const sb = getSupabase();
       if (sb) {
         try {
-          const { data: players } = await sb.from('players').select('*').eq('status', 'active');
-          const { data: contracts } = await sb.from('contracts').select('*').eq('is_current', true);
+          const { data: players } = await sb.from('players').select('*').limit(5000);
+          const { data: contracts } = await sb.from('contracts').select('*').eq('is_current', true).limit(5000);
           if (players?.length) {
             const cmap = {}; (contracts || []).forEach(c => cmap[c.player_id] = c);
             const grouped = {};

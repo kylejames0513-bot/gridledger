@@ -80,7 +80,7 @@ export default function ClientProviders({ children }) {
   return (
     <AuthContext.Provider value={ctx}>
       {children}
-      <ChatBubble />
+      <ChatBubble auth={ctx} />
       <AuthModal
         show={showAuth}
         onClose={() => setShowAuth(false)}
