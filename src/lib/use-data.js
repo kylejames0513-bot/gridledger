@@ -108,15 +108,36 @@ export function useAllRosters() {
       const sb = getSupabase();
       if (sb) {
         try {
-          const { data: players } = await sb.from('players').select('*').limit(5000);
-          const { data: contracts } = await sb.from('contracts').select('*').eq('is_current', true).limit(5000);
-          if (players?.length) {
-            const cmap = {}; (contracts || []).forEach(c => cmap[c.player_id] = c);
+          // Paginate to get ALL players (Supabase default max is 1000)
+          let allPlayers = [];
+          let page = 0;
+          const pageSize = 1000;
+          while (true) {
+            const { data } = await sb.from('players').select('*').range(page * pageSize, (page + 1) * pageSize - 1);
+            if (!data || data.length === 0) break;
+            allPlayers = allPlayers.concat(data);
+            if (data.length < pageSize) break;
+            page++;
+          }
+
+          // Same for contracts
+          let allContracts = [];
+          page = 0;
+          while (true) {
+            const { data } = await sb.from('contracts').select('*').eq('is_current', true).range(page * pageSize, (page + 1) * pageSize - 1);
+            if (!data || data.length === 0) break;
+            allContracts = allContracts.concat(data);
+            if (data.length < pageSize) break;
+            page++;
+          }
+
+          if (allPlayers.length) {
+            const cmap = {}; allContracts.forEach(c => cmap[c.player_id] = c);
             const grouped = {};
-            players.forEach(p => { if (isJunk(p.name)) return; if (!grouped[p.team_id]) grouped[p.team_id] = []; grouped[p.team_id].push({ ...p, contract: normContract(cmap[p.id]) }); });
+            allPlayers.forEach(p => { if (isJunk(p.name)) return; if (!grouped[p.team_id]) grouped[p.team_id] = []; grouped[p.team_id].push({ ...p, contract: normContract(cmap[p.id]) }); });
             setRosters(grouped); setLoaded(true); return;
           }
-        } catch(e){}
+        } catch(e){ console.error('useAllRosters error:', e); }
       }
       const g = {}; NFL_TEAMS.forEach(t => g[t.id] = demoRoster(t.id));
       setRosters(g); setLoaded(true);
