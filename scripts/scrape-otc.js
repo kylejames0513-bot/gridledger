@@ -783,79 +783,87 @@ async function scrapeTransactions() {
 // ═══════════════════════════════════════════════════════════════
 
 async function scrapeNews() {
-  console.log('  Scraping ESPN NFL news...');
+  console.log('  Scraping NFL news from ESPN + NFL.com...');
+  var items = [];
+
+  function categorize(text) {
+    var t = text.toLowerCase();
+    if (/trade[sd]?|traded|deal|swap|acquir/i.test(t)) return 'trade';
+    if (/sign[sed]?|agree|contract|free.?agent|ink/i.test(t)) return 'signing';
+    if (/cut|release[sd]?|waive[sd]?|terminat|designat/i.test(t)) return 'cut';
+    if (/restructur|extend|extension|rework/i.test(t)) return 'restructure';
+    if (/injur|ir |reserve|out for|miss|concuss|acl|mcl/i.test(t)) return 'injury';
+    if (/draft|pick|select|combine|mock|prospect/i.test(t)) return 'draft';
+    return 'other';
+  }
+
+  function cleanCDATA(s) { return (s || '').replace(/<!\[CDATA\[(.*?)\]\]>/gs, '$1').replace(/<[^>]+>/g, '').trim(); }
+
+  // ─── ESPN RSS ───
   try {
-    var html = await fetchPage('https://www.espn.com/espn/rss/nfl/news');
-    var $ = cheerio.load(html, { xmlMode: true });
-    var items = [];
-
-    $('item').each(function() {
-      var titleRaw = $(this).find('title').text().trim();
-      var linkRaw = $(this).find('link').text().trim();
-      var descRaw = $(this).find('description').text().trim();
-      var pubDate = $(this).find('pubDate').text().trim();
-
-      // Handle CDATA wrapped content
-      var title = titleRaw.replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').trim();
-      var link = linkRaw.replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').trim();
-      var desc = descRaw.replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1')
-        .replace(/<[^>]+>/g, '')  // Strip HTML tags from description
-        .trim()
-        .substring(0, 300);
-
-      // Categorize from keywords in title
-      var titleLower = (title + ' ' + desc).toLowerCase();
-      var type = 'news';
-      if (/trade[sd]?|traded|deal|swap|acquir/i.test(titleLower)) type = 'trade';
-      else if (/sign[sed]?|agree|contract|deal|free.?agent|ink/i.test(titleLower)) type = 'signing';
-      else if (/cut|release[sd]?|waive[sd]?|terminat|designat/i.test(titleLower)) type = 'cut';
-      else if (/restructur|extend|extension|rework/i.test(titleLower)) type = 'restructure';
-      else if (/injur|ir |reserve|out for|miss/i.test(titleLower)) type = 'injury';
-      else if (/draft|pick|select|combine|mock/i.test(titleLower)) type = 'draft';
-
-      if (title.length > 5) {
-        items.push({ title: title, link: link, desc: desc, date: pubDate, type: type });
+    var espnHtml = await fetchPage('https://www.espn.com/espn/rss/nfl/news');
+    var $e = cheerio.load(espnHtml, { xmlMode: true });
+    $e('item').each(function() {
+      var title = cleanCDATA($e(this).find('title').text());
+      var link = cleanCDATA($e(this).find('link').text());
+      var desc = cleanCDATA($e(this).find('description').text()).substring(0, 300);
+      var pubDate = $e(this).find('pubDate').text().trim();
+      if (title.length > 15) {
+        items.push({ title: title, link: link, desc: desc, date: pubDate, source: 'ESPN', type: categorize(title + ' ' + desc) });
       }
     });
+    console.log('    ESPN: ' + items.length + ' articles');
+  } catch(e) { console.log('    ESPN RSS failed: ' + e.message); }
 
-    // If ESPN RSS returned nothing, try NFL.com RSS as fallback
-    if (items.length === 0) {
-      console.log('    ESPN RSS empty, trying NFL.com...');
-      try {
-        var nflHtml = await fetchPage('https://www.nfl.com/feeds-rs/headlines.rss');
-        var $n = cheerio.load(nflHtml, { xmlMode: true });
-        $n('item').each(function() {
-          var title = $n(this).find('title').text().replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').trim();
-          var link = $n(this).find('link').text().replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').trim();
-          var desc = $n(this).find('description').text().replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').replace(/<[^>]+>/g, '').trim().substring(0, 300);
-          var pubDate = $n(this).find('pubDate').text().trim();
-          var titleLower = title.toLowerCase();
-          var type = 'news';
-          if (/trade/i.test(titleLower)) type = 'trade';
-          else if (/sign|free.?agent|contract/i.test(titleLower)) type = 'signing';
-          else if (/cut|release|waive/i.test(titleLower)) type = 'cut';
-          if (title.length > 5) items.push({ title: title, link: link, desc: desc, date: pubDate, type: type });
-        });
-      } catch(e2) { console.log('    NFL.com RSS also failed'); }
-    }
+  // ─── NFL.com RSS ───
+  var nflCount = 0;
+  try {
+    var nflHtml = await fetchPage('https://www.nfl.com/feeds-rs/headlines.rss');
+    var $n = cheerio.load(nflHtml, { xmlMode: true });
+    $n('item').each(function() {
+      var title = cleanCDATA($n(this).find('title').text());
+      var link = cleanCDATA($n(this).find('link').text());
+      var desc = cleanCDATA($n(this).find('description').text()).substring(0, 300);
+      var pubDate = $n(this).find('pubDate').text().trim();
+      // Dedupe: skip if we already have a very similar ESPN headline
+      var isDupe = items.some(function(x) { return x.title.toLowerCase().substring(0, 40) === title.toLowerCase().substring(0, 40); });
+      if (title.length > 15 && !isDupe) {
+        items.push({ title: title, link: link, desc: desc, date: pubDate, source: 'NFL.com', type: categorize(title + ' ' + desc) });
+        nflCount++;
+      }
+    });
+    console.log('    NFL.com: ' + nflCount + ' articles');
+  } catch(e) { console.log('    NFL.com RSS failed: ' + e.message); }
 
-    console.log('    Found ' + items.length + ' articles');
-    if (!items.length) return 0;
+  console.log('    Total: ' + items.length + ' unique articles');
+  if (!items.length) return 0;
 
-    var ic = 0;
-    for (var i = 0; i < Math.min(items.length, 30); i++) {
-      var r = await api('news', 'POST', [{
-        headline: items[i].title,
-        body: items[i].desc || items[i].title,
-        source: 'ESPN',
-        source_url: items[i].link,
-        category: items[i].type || 'other',
-        published_at: items[i].date ? new Date(items[i].date).toISOString() : new Date().toISOString(),
-      }]);
-      if (r && r.length) ic++;
-    }
-    console.log('    Inserted ' + ic + ' news articles');
-    return ic;
+  // Sort by date (newest first) then insert
+  items.sort(function(a, b) {
+    var da = a.date ? new Date(a.date).getTime() : 0;
+    var db = b.date ? new Date(b.date).getTime() : 0;
+    return db - da;
+  });
+
+  var ic = 0;
+  for (var i = 0; i < Math.min(items.length, 40); i++) {
+    var item = items[i];
+    var pubISO;
+    try { pubISO = item.date ? new Date(item.date).toISOString() : new Date().toISOString(); }
+    catch(e) { pubISO = new Date().toISOString(); }
+
+    var r = await api('news', 'POST', [{
+      headline: item.title,
+      body: item.desc || item.title,
+      source: item.source,
+      source_url: item.link,
+      category: item.type || 'other',
+      published_at: pubISO,
+    }]);
+    if (r && r.length) ic++;
+  }
+  console.log('    Inserted ' + ic + ' news articles');
+  return ic;
   } catch(e) {
     console.log('    News failed: ' + e.message);
     return 0;

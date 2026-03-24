@@ -80,42 +80,63 @@ async function syncCapSpace() {
   return updated;
 }
 
-// ─── SYNC NEWS (ESPN RSS) ───
+// ─── SYNC NEWS (ESPN RSS + NFL.com RSS) ───
 async function syncNews() {
-  const res = await fetch('https://www.espn.com/espn/rss/nfl/news', {
-    headers: { 'User-Agent': 'Mozilla/5.0' }
-  });
-  const xml = await res.text();
-  const $ = cheerio.load(xml, { xmlMode: true });
-  let inserted = 0;
-
   const items = [];
-  $('item').each(function() {
-    const title = $(this).find('title').text().replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').trim();
-    const link = $(this).find('link').text().replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').trim();
-    const desc = $(this).find('description').text().replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').replace(/<[^>]+>/g, '').trim().substring(0, 300);
-    const pubDate = $(this).find('pubDate').text().trim();
+  const clean = s => (s || '').replace(/<!\[CDATA\[(.*?)\]\]>/gs, '$1').replace(/<[^>]+>/g, '').trim();
 
-    const lower = (title + ' ' + desc).toLowerCase();
-    let cat = 'other';
-    if (/trade[sd]?|traded|swap|acquir/i.test(lower)) cat = 'trade';
-    else if (/sign[sed]?|agree|contract|free.?agent/i.test(lower)) cat = 'signing';
-    else if (/cut|release[sd]?|waive[sd]?|terminat/i.test(lower)) cat = 'cut';
-    else if (/restructur|extend|extension/i.test(lower)) cat = 'restructure';
-    else if (/injur|ir |reserve|out for/i.test(lower)) cat = 'injury';
-    else if (/draft|pick|combine|mock/i.test(lower)) cat = 'draft';
+  function categorize(text) {
+    const t = text.toLowerCase();
+    if (/trade[sd]?|traded|swap|acquir/i.test(t)) return 'trade';
+    if (/sign[sed]?|agree|contract|free.?agent/i.test(t)) return 'signing';
+    if (/cut|release[sd]?|waive[sd]?|terminat/i.test(t)) return 'cut';
+    if (/restructur|extend|extension/i.test(t)) return 'restructure';
+    if (/injur|ir |reserve|out for/i.test(t)) return 'injury';
+    if (/draft|pick|combine|mock/i.test(t)) return 'draft';
+    return 'other';
+  }
 
-    if (title.length > 5) items.push({ title, link, desc, pubDate, cat });
-  });
+  // ESPN
+  try {
+    const res = await fetch('https://www.espn.com/espn/rss/nfl/news', { headers: { 'User-Agent': 'Mozilla/5.0' } });
+    const xml = await res.text();
+    const $ = cheerio.load(xml, { xmlMode: true });
+    $('item').each(function() {
+      const title = clean($(this).find('title').text());
+      const link = clean($(this).find('link').text());
+      const desc = clean($(this).find('description').text()).substring(0, 300);
+      const pubDate = $(this).find('pubDate').text().trim();
+      if (title.length > 15) items.push({ title, link, desc, pubDate, source: 'ESPN', cat: categorize(title + ' ' + desc) });
+    });
+  } catch(e) {}
 
-  for (const item of items.slice(0, 20)) {
+  // NFL.com
+  try {
+    const res2 = await fetch('https://www.nfl.com/feeds-rs/headlines.rss', { headers: { 'User-Agent': 'Mozilla/5.0' } });
+    const xml2 = await res2.text();
+    const $n = cheerio.load(xml2, { xmlMode: true });
+    $n('item').each(function() {
+      const title = clean($n(this).find('title').text());
+      const link = clean($n(this).find('link').text());
+      const desc = clean($n(this).find('description').text()).substring(0, 300);
+      const pubDate = $n(this).find('pubDate').text().trim();
+      const isDupe = items.some(x => x.title.toLowerCase().substring(0, 40) === title.toLowerCase().substring(0, 40));
+      if (title.length > 15 && !isDupe) items.push({ title, link, desc, pubDate, source: 'NFL.com', cat: categorize(title + ' ' + desc) });
+    });
+  } catch(e) {}
+
+  let inserted = 0;
+  for (const item of items.slice(0, 30)) {
+    let pubISO;
+    try { pubISO = item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(); }
+    catch(e) { pubISO = new Date().toISOString(); }
     const r = await supaFetch('news', 'POST', [{
       headline: item.title,
       body: item.desc || item.title,
-      source: 'ESPN',
+      source: item.source,
       source_url: item.link,
       category: item.cat,
-      published_at: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
+      published_at: pubISO,
     }]);
     if (r?.length) inserted++;
   }

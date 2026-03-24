@@ -52,6 +52,7 @@ export default function NewsTicker({ news }) {
                 ) : (
                   <span style={{ color: 'var(--text-secondary)' }}>{title}</span>
                 )}
+                {n.source && <span style={{ fontSize: 9, color: 'var(--text-faint)', fontWeight: 500 }}>— {n.source}</span>}
               </div>
             );
           })}
